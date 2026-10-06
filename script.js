@@ -220,3 +220,57 @@ window.addEventListener(
 );
 window.addEventListener("resize", updateJourneyProgress);
 updateJourneyProgress();
+
+const scenes = [...document.querySelectorAll("[data-scene]")];
+const sceneMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+const sceneObserver = new IntersectionObserver(
+  (entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.remove("reveal-pending");
+        sceneObserver.unobserve(entry.target);
+      }
+    });
+  },
+  { threshold: 0.15 },
+);
+scenes.forEach((scene) => {
+  scene.classList.add("reveal-pending");
+  sceneObserver.observe(scene);
+});
+function updateSceneDepth() {
+  if (sceneMotion.matches) {
+    scenes.forEach((scene) => scene.style.setProperty("--scene-shift", "0px"));
+    return;
+  }
+  scenes.forEach((scene) => {
+    const rect = scene.getBoundingClientRect();
+    if (rect.bottom > 0 && rect.top < window.innerHeight) {
+      const shift = Math.max(
+        -12,
+        Math.min(
+          12,
+          (rect.top + rect.height / 2 - window.innerHeight / 2) * 0.035,
+        ),
+      );
+      scene.style.setProperty("--scene-shift", `${shift}px`);
+    }
+  });
+}
+let sceneFramePending = false;
+window.addEventListener(
+  "scroll",
+  () => {
+    if (!sceneFramePending) {
+      sceneFramePending = true;
+      requestAnimationFrame(() => {
+        updateSceneDepth();
+        sceneFramePending = false;
+      });
+    }
+  },
+  { passive: true },
+);
+window.addEventListener("resize", updateSceneDepth);
+sceneMotion.addEventListener("change", updateSceneDepth);
+updateSceneDepth();
